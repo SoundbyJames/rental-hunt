@@ -100,6 +100,31 @@
       white-space: nowrap;
     }
 
+    /* Toolbar buttons */
+    .toggle-expired, .corrections-btn {
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      padding: 0.4rem 0.75rem;
+      cursor: pointer;
+      white-space: nowrap;
+      min-height: 36px;
+    }
+    .toggle-expired {
+      color: var(--text-secondary);
+      background: none;
+      border: 1px solid var(--border);
+    }
+    .toggle-expired.showing { color: var(--accent); border-color: var(--accent); }
+    .corrections-btn {
+      color: var(--accent);
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      display: none;
+    }
+    .corrections-btn.has-changes { display: inline-flex; align-items: center; gap: 0.3rem; }
+
     /* Card list */
     .list { padding: 0.75rem 1rem calc(var(--safe-bottom) + 1rem); }
 
@@ -113,8 +138,7 @@
       transition: box-shadow 0.15s ease;
     }
     .card:active { box-shadow: var(--shadow-lg); }
-
-    .card-body { padding: 1rem 1rem 0.75rem; }
+    .card-body { padding: 1rem 1rem 0.75rem; position: relative; }
 
     /* Top row: score + address + price */
     .card-top {
@@ -141,6 +165,16 @@
     .score-ring.good  { background: var(--score-good); }
     .score-ring.ok    { background: var(--score-ok); }
     .score-ring.low   { background: var(--score-low); }
+
+    /* Blue dot on score ring when card has local edits */
+    .edit-dot {
+      position: absolute;
+      bottom: -1px; right: -1px;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid white;
+    }
 
     .card-info { flex: 1; min-width: 0; }
     .card-addr {
@@ -211,7 +245,6 @@
 
     /* Expired card */
     .card.expired { opacity: 0.5; }
-    .card.expired .card-body { position: relative; }
     .expired-badge {
       display: inline-flex;
       align-items: center;
@@ -225,28 +258,13 @@
       margin-top: 0.5rem;
     }
 
-    /* Show expired toggle button */
-    .toggle-expired {
-      font-family: inherit;
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--text-secondary);
-      background: none;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 0.4rem 0.75rem;
-      cursor: pointer;
-      white-space: nowrap;
-      min-height: 36px;
-    }
-    .toggle-expired.showing { color: var(--accent); border-color: var(--accent); }
-
     /* Tags */
     .card-tags {
       display: flex;
       flex-wrap: wrap;
       gap: 0.3rem;
       margin-top: 0.6rem;
+      align-items: center;
     }
     .tag {
       font-size: 0.72rem;
@@ -254,10 +272,102 @@
       padding: 0.2rem 0.55rem;
       border-radius: 100px;
       line-height: 1.4;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
     }
     .tag.g { background: var(--green-bg); color: var(--green-text); }
     .tag.y { background: var(--yellow-bg); color: var(--yellow-text); }
-    .tag.r { background: var(--red-bg); color: var(--red-text); }
+    .tag.r { background: var(--red-bg);    color: var(--red-text); }
+
+    /* Tag × remove button — hidden unless card is in edit mode */
+    .tag-x {
+      display: none;
+      cursor: pointer;
+      opacity: 0.55;
+      font-size: 0.8em;
+      line-height: 1;
+      padding: 0 0.1rem;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .card.editing .tag-x { display: inline; }
+    .tag-x:hover { opacity: 1; }
+
+    /* + Add tag button — hidden unless card is in edit mode */
+    .tag-add-btn {
+      display: none;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.18rem 0.5rem;
+      border-radius: 100px;
+      border: 1.5px dashed var(--accent);
+      color: var(--accent);
+      background: none;
+      cursor: pointer;
+      line-height: 1.4;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .card.editing .tag-add-btn { display: inline-flex; align-items: center; gap: 0.2rem; }
+
+    /* Edit pencil button — top-right of card body */
+    .card-edit-btn {
+      position: absolute;
+      top: 0.9rem; right: 0.9rem;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      padding: 0.2rem 0.45rem;
+      cursor: pointer;
+      line-height: 1.4;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .card-edit-btn:hover, .card.editing .card-edit-btn {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: #eff6ff;
+    }
+
+    /* Inline tag picker (expands below tag row when + tapped) */
+    .tag-picker {
+      display: none;
+      margin-top: 0.5rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.4rem;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+    }
+    .tag-picker.open { display: flex; }
+    .tag-picker-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.72rem;
+      font-weight: 500;
+      padding: 0.2rem 0.5rem;
+      border-radius: 100px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tag-picker-option.g { background: var(--green-bg);  color: var(--green-text); }
+    .tag-picker-option.y { background: var(--yellow-bg); color: var(--yellow-text); }
+    .tag-picker-option.r { background: var(--red-bg);    color: var(--red-text); }
+    .tag-picker-option:hover { filter: brightness(0.95); }
+    .tag-picker-custom {
+      font-size: 0.72rem; font-weight: 500;
+      padding: 0.2rem 0.5rem;
+      border-radius: 100px;
+      border: 1.5px dashed var(--text-muted);
+      color: var(--text-secondary);
+      background: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
 
     /* View listing button */
     .card-action {
@@ -280,14 +390,12 @@
     /* Rank badge on top cards */
     .rank-badge {
       position: absolute;
-      top: -2px;
-      right: -2px;
+      top: -2px; right: -2px;
       background: #111827;
       color: white;
       font-size: 0.55rem;
       font-weight: 700;
-      width: 16px;
-      height: 16px;
+      width: 16px; height: 16px;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -303,7 +411,44 @@
     .empty h2 { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
     .empty p { font-size: 0.85rem; line-height: 1.5; }
 
-    /* Desktop: wider cards, centered */
+    /* Export modal (bottom sheet) */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.45);
+      align-items: flex-end;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-sheet {
+      background: var(--surface);
+      border-radius: var(--radius) var(--radius) 0 0;
+      width: 100%; max-height: 80vh;
+      padding: 1.25rem 1.25rem calc(1.25rem + var(--safe-bottom));
+      display: flex; flex-direction: column; gap: 0.75rem;
+      overflow-y: auto;
+    }
+    .modal-sheet h3 { font-size: 1rem; font-weight: 700; }
+    .modal-sheet p { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.45; }
+    .modal-sheet pre {
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem;
+      font-size: 0.72rem;
+      max-height: 240px; overflow-y: auto;
+      white-space: pre-wrap; word-break: break-all;
+      border: 1px solid var(--border);
+    }
+    .modal-btns { display: flex; gap: 0.5rem; }
+    .modal-btns button {
+      flex: 1; font-family: inherit; font-size: 0.9rem; font-weight: 600;
+      padding: 0.75rem; border-radius: var(--radius-sm); cursor: pointer; border: none;
+    }
+    .btn-copy { background: var(--accent); color: white; }
+    .btn-close { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+    .btn-clear { background: #fee2e2; color: #7f1d1d; border: 1px solid #fca5a5; }
+
+    /* Desktop */
     @media (min-width: 640px) {
       .list { max-width: 640px; margin: 0 auto; padding: 1rem 1.5rem 2rem; }
       .header { padding: calc(var(--safe-top) + 1.25rem) 1.5rem 1.25rem; }
@@ -335,13 +480,166 @@
       <option value="apartments.com">Apartments.com</option>
     </select>
     <button class="toggle-expired" id="toggleExpired">Show expired</button>
+    <button class="corrections-btn" id="correctionsBtn">✏ Corrections</button>
     <span class="count" id="count"></span>
   </div>
 
   <div class="list" id="list"></div>
 
+  <!-- Export corrections modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-sheet">
+      <h3>✏ Local Corrections</h3>
+      <p>These tag edits are saved on this device. Paste the JSON below into <code>listing_overrides.json</code> on your desktop, then run <code>combine + score + deploy</code> to make them permanent across all devices.</p>
+      <pre id="exportJson"></pre>
+      <div class="modal-btns">
+        <button class="btn-copy" id="btnCopy">Copy JSON</button>
+        <button class="btn-clear" id="btnClear">Clear all</button>
+        <button class="btn-close" id="btnClose">Done</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const DATA = window.RENTAL_LISTINGS || [];
+
+    // ── Known tags (text + suggested color) ──────────────────────────────────
+    // These are all tags the scoring system can produce, plus common add-ons.
+    // color: 'g' = green (pro), 'y' = yellow (neutral/note), 'r' = red (con)
+    const KNOWN_TAGS = [
+      { text: 'Central/mini-split AC', color: 'g' },
+      { text: 'Window AC',             color: 'y' },
+      { text: 'No AC',                 color: 'r' },
+      { text: 'In-unit laundry',       color: 'g' },
+      { text: 'Laundry on-site',       color: 'y' },
+      { text: 'No laundry',            color: 'r' },
+      { text: 'Dishwasher',            color: 'g' },
+      { text: 'No dishwasher',         color: 'y' },
+      { text: 'Outdoor space',         color: 'g' },
+      { text: 'Single-family',         color: 'g' },
+      { text: 'Condo',                 color: 'y' },
+      { text: 'Townhouse',             color: 'g' },
+      { text: '2+ bathrooms',          color: 'g' },
+      { text: 'Garage parking',        color: 'g' },
+      { text: 'Street parking only',   color: 'y' },
+      { text: 'No parking',            color: 'r' },
+      { text: 'Pets allowed',          color: 'g' },
+      { text: 'No pets',               color: 'r' },
+      { text: 'Great studio room',     color: 'g' },
+      { text: 'No shared walls',       color: 'g' },
+      { text: 'Quiet street',          color: 'g' },
+      { text: 'Good closets',          color: 'g' },
+      { text: 'Visit: positive',       color: 'g' },
+      { text: 'Visit: negative',       color: 'r' },
+      { text: 'Valley heat warning',   color: 'r' },
+    ];
+
+    // ── localStorage override helpers ─────────────────────────────────────────
+    const OV_PREFIX = 'rental_ov_';
+
+    function getOverride(id) {
+      try {
+        const raw = localStorage.getItem(OV_PREFIX + id);
+        return raw ? JSON.parse(raw) : { add: [], remove: [] };
+      } catch { return { add: [], remove: [] }; }
+    }
+
+    function setOverride(id, ov) {
+      if (ov.add.length === 0 && ov.remove.length === 0) {
+        localStorage.removeItem(OV_PREFIX + id);
+      } else {
+        localStorage.setItem(OV_PREFIX + id, JSON.stringify(ov));
+      }
+      updateCorrectionsBtn();
+    }
+
+    function allOverrides() {
+      const out = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith(OV_PREFIX)) {
+          const id = key.slice(OV_PREFIX.length);
+          out[id] = JSON.parse(localStorage.getItem(key));
+        }
+      }
+      return out;
+    }
+
+    function hasAnyOverrides() {
+      for (let i = 0; i < localStorage.length; i++) {
+        if (localStorage.key(i).startsWith(OV_PREFIX)) return true;
+      }
+      return false;
+    }
+
+    // Merge localStorage overrides into a listing's tag arrays
+    function effectiveTags(listing) {
+      const ov = getOverride(listing.id);
+      const tg = [...(listing.tags_green  || [])];
+      const ty = [...(listing.tags_yellow || [])];
+      const tr = [...(listing.tags_red    || [])];
+
+      // Removals
+      for (const text of ov.remove) {
+        const rem = arr => { const i = arr.indexOf(text); if (i > -1) arr.splice(i, 1); };
+        rem(tg); rem(ty); rem(tr);
+      }
+      // Additions (avoid duplicates)
+      for (const { text, color } of ov.add) {
+        if (color === 'g' && !tg.includes(text)) tg.push(text);
+        else if (color === 'y' && !ty.includes(text)) ty.push(text);
+        else if (color === 'r' && !tr.includes(text)) tr.push(text);
+      }
+
+      const edited = ov.add.length > 0 || ov.remove.length > 0;
+      return { tg, ty, tr, edited };
+    }
+
+    // ── Tag HTML builder ──────────────────────────────────────────────────────
+    function buildTagsSection(listing) {
+      const { tg, ty, tr, edited } = effectiveTags(listing);
+      const id = listing.id;
+
+      const tagHtml = [
+        ...tg.map(t => tagEl(t, 'g', id)),
+        ...ty.map(t => tagEl(t, 'y', id)),
+        ...tr.map(t => tagEl(t, 'r', id)),
+      ].join('');
+
+      // Available tags to add = KNOWN_TAGS minus what's already showing
+      const showing = new Set([...tg, ...ty, ...tr]);
+      const available = KNOWN_TAGS.filter(k => !showing.has(k.text));
+      const pickerHtml = available.map(k =>
+        `<span class="tag-picker-option ${k.color}" data-tag="${esc(k.text)}" data-color="${k.color}" data-id="${id}">+ ${esc(k.text)}</span>`
+      ).join('') +
+        `<button class="tag-picker-custom" data-custom="1" data-id="${id}">+ custom…</button>`;
+
+      const editDot = edited ? '<span class="edit-dot"></span>' : '';
+
+      return { tagHtml, pickerHtml, editDot };
+    }
+
+    function tagEl(text, color, id) {
+      return `<span class="tag ${color}" data-tag="${esc(text)}" data-id="${id}">${esc(text)}<span class="tag-x" data-remove="${esc(text)}" data-id="${id}" title="Remove tag">&times;</span></span>`;
+    }
+
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Corrections button ────────────────────────────────────────────────────
+    function updateCorrectionsBtn() {
+      const btn = document.getElementById('correctionsBtn');
+      const count = Object.keys(allOverrides()).length;
+      if (count > 0) {
+        btn.textContent = `✏ Corrections (${count})`;
+        btn.classList.add('has-changes');
+      } else {
+        btn.classList.remove('has-changes');
+      }
+    }
+
+    // ── Render ────────────────────────────────────────────────────────────────
     const listEl      = document.getElementById('list');
     const sortEl      = document.getElementById('sort');
     const regionEl    = document.getElementById('region');
@@ -369,10 +667,9 @@
       if (!photoUrls) return '';
       const urls = photoUrls.split('|').filter(Boolean).slice(0, 8);
       if (!urls.length) return '';
-      const imgs = urls.map(u =>
+      return `<div class="photo-strip">${urls.map(u =>
         `<img src="${u}" loading="lazy" alt="listing photo" onerror="this.style.display='none'">`
-      ).join('');
-      return `<div class="photo-strip">${imgs}</div>`;
+      ).join('')}</div>`;
     }
 
     function render() {
@@ -381,40 +678,33 @@
       const source = sourceEl.value;
       let items    = [...DATA];
 
-      // Expired filter
       if (!showExpired) items = items.filter(l => (l.status || 'active') !== 'expired');
-
       if (region) items = items.filter(l => (l.region || '') === region);
       if (source) items = items.filter(l => (l.source || '').includes(source === 'apartments.com' ? 'apartment' : source));
 
-      if (sort === 'score')      items.sort((a, b) => (b.score_display || 0) - (a.score_display || 0));
+      if (sort === 'score')       items.sort((a, b) => (b.score_display || 0) - (a.score_display || 0));
       else if (sort === 'price_low')  items.sort((a, b) => (a.price || 99999) - (b.price || 99999));
       else if (sort === 'price_high') items.sort((a, b) => (b.price || 0) - (a.price || 0));
-      else if (sort === 'sqft')  items.sort((a, b) => (b.sqft || 0) - (a.sqft || 0));
+      else if (sort === 'sqft')   items.sort((a, b) => (b.sqft || 0) - (a.sqft || 0));
 
-      // Populate region dropdown (preserve selection)
       const regions = [...new Set(DATA.map(l => l.region).filter(Boolean))].sort();
       regionEl.innerHTML = '<option value="">All Regions</option>' +
         regions.map(r => `<option value="${r}"${r === region ? ' selected' : ''}>${r}</option>`).join('');
 
       const expiredCount = DATA.filter(l => l.status === 'expired').length;
       const lastChecked  = DATA.map(l => l.last_checked).filter(Boolean).sort().pop();
-      const checkedStr   = lastChecked
-        ? ` · checked ${new Date(lastChecked).toLocaleDateString()}`
-        : '';
-
+      const checkedStr   = lastChecked ? ` · checked ${new Date(lastChecked).toLocaleDateString()}` : '';
       countEl.textContent = `${items.length} listing${items.length !== 1 ? 's' : ''}${checkedStr}`;
 
-      // Toggle button visibility
       if (expiredCount > 0) {
         toggleBtn.style.display = '';
-        toggleBtn.textContent   = showExpired
-          ? `Hide expired (${expiredCount})`
-          : `Show expired (${expiredCount})`;
+        toggleBtn.textContent = showExpired ? `Hide expired (${expiredCount})` : `Show expired (${expiredCount})`;
         toggleBtn.classList.toggle('showing', showExpired);
       } else {
         toggleBtn.style.display = 'none';
       }
+
+      updateCorrectionsBtn();
 
       if (items.length === 0) {
         listEl.innerHTML = `<div class="empty">
@@ -424,7 +714,6 @@
         return;
       }
 
-      // Rank counter only counts non-expired
       let rank = 0;
       listEl.innerHTML = items.map(l => {
         const isExpired = l.status === 'expired';
@@ -432,38 +721,32 @@
 
         const price   = fmtPrice(l);
         const details = [
-          l.beds  != null ? `${l.beds} bd`          : '',
-          l.baths != null ? `${l.baths} ba`         : '',
+          l.beds  != null ? `${l.beds} bd`  : '',
+          l.baths != null ? `${l.baths} ba` : '',
           l.sqft          ? `${Math.round(l.sqft)} sqft` : ''
         ].filter(Boolean);
 
-        const addr    = [l.address, l.city].filter(Boolean).join(', ') || 'Unknown address';
-        const sc      = l.score_display ?? 0;
-        const cls     = scoreClass(sc);
-        const srcCls  = (l.source || '').includes('apartment') ? 'apartments' : 'zillow';
+        const addr     = [l.address, l.city].filter(Boolean).join(', ') || 'Unknown address';
+        const sc       = l.score_display ?? 0;
+        const cls      = scoreClass(sc);
+        const srcCls   = (l.source || '').includes('apartment') ? 'apartments' : 'zillow';
         const srcLabel = srcCls === 'zillow' ? 'Z' : 'A';
         const rankBadge = (!isExpired && rank <= 3)
           ? `<span class="rank-badge">${rank}</span>` : '';
+        const siteName = srcCls === 'zillow' ? 'Zillow' : 'Apartments.com';
 
-        const tags = [
-          ...(l.tags_green  || []).map(t => `<span class="tag g">${t}</span>`),
-          ...(l.tags_yellow || []).map(t => `<span class="tag y">${t}</span>`),
-          ...(l.tags_red    || []).map(t => `<span class="tag r">${t}</span>`)
-        ].join('');
-
-        const photos       = buildPhotoStrip(l.photo_urls);
+        const { tagHtml, pickerHtml, editDot } = buildTagsSection(l);
         const expiredBadge = isExpired
           ? `<div class="expired-badge">&#10006; No longer available</div>` : '';
-        const siteName     = srcCls === 'zillow' ? 'Zillow' : 'Apartments.com';
 
-        return `<div class="card${isExpired ? ' expired' : ''}">
+        return `<div class="card${isExpired ? ' expired' : ''}" data-id="${l.id}">
           <div class="card-body">
             <div class="card-top">
               <div class="score-ring ${cls}" style="position:relative">
-                ${isExpired ? '—' : Math.round(sc)}${rankBadge}
+                ${isExpired ? '—' : Math.round(sc)}${rankBadge}${editDot}
               </div>
               <div class="card-info">
-                <div class="card-addr">${addr}</div>
+                <div class="card-addr">${esc(addr)}</div>
                 <div class="card-details">
                   <span class="card-price">${price}</span>
                   ${details.length ? '<span class="sep">&middot;</span>' + details.join('<span class="sep">&middot;</span>') : ''}
@@ -473,9 +756,14 @@
               </div>
             </div>
             ${expiredBadge}
-            ${tags ? `<div class="card-tags">${tags}</div>` : ''}
+            <div class="card-tags">
+              ${tagHtml}
+              <button class="tag-add-btn" data-id="${l.id}">+ add tag</button>
+            </div>
+            <div class="tag-picker" data-id="${l.id}">${pickerHtml}</div>
+            <button class="card-edit-btn" data-id="${l.id}">✏ Edit</button>
           </div>
-          ${photos}
+          ${buildPhotoStrip(l.photo_urls)}
           <div class="card-action">
             <a href="${l.source_url}" target="_blank" rel="noopener">View on ${siteName}</a>
           </div>
@@ -483,13 +771,219 @@
       }).join('');
     }
 
-    toggleBtn.addEventListener('click', () => {
-      showExpired = !showExpired;
+    // ── Re-render just the tags section of a single card ──────────────────────
+    // (avoids full re-render which would collapse photos, scroll position, etc.)
+    function refreshCardTags(id) {
+      const card = listEl.querySelector(`.card[data-id="${id}"]`);
+      if (!card) return;
+      const listing = DATA.find(l => l.id === id);
+      if (!listing) return;
+
+      const { tagHtml, pickerHtml, editDot } = buildTagsSection(listing);
+
+      const tagsEl = card.querySelector('.card-tags');
+      if (tagsEl) tagsEl.innerHTML = tagHtml +
+        `<button class="tag-add-btn" data-id="${id}">+ add tag</button>`;
+
+      const pickerEl = card.querySelector('.tag-picker');
+      if (pickerEl) { pickerEl.innerHTML = pickerHtml; pickerEl.classList.remove('open'); }
+
+      const dotEl = card.querySelector('.edit-dot');
+      const ring  = card.querySelector('.score-ring');
+      if (editDot && !dotEl && ring) {
+        ring.insertAdjacentHTML('beforeend', editDot);
+      } else if (!editDot && dotEl) {
+        dotEl.remove();
+      }
+
+      updateCorrectionsBtn();
+    }
+
+    // ── Event delegation on the list ─────────────────────────────────────────
+    listEl.addEventListener('click', e => {
+      // Edit toggle button
+      const editBtn = e.target.closest('.card-edit-btn');
+      if (editBtn) {
+        const card = editBtn.closest('.card');
+        const wasEditing = card.classList.contains('editing');
+        // Close all other editing cards first
+        listEl.querySelectorAll('.card.editing').forEach(c => {
+          c.classList.remove('editing');
+          const p = c.querySelector('.tag-picker');
+          if (p) p.classList.remove('open');
+        });
+        if (!wasEditing) card.classList.add('editing');
+        return;
+      }
+
+      // Remove (×) button on a tag
+      const xBtn = e.target.closest('.tag-x');
+      if (xBtn) {
+        e.stopPropagation();
+        const id   = xBtn.dataset.id;
+        const text = xBtn.dataset.remove;
+        const ov   = getOverride(id);
+        // Remove from add list if it was manually added
+        ov.add = ov.add.filter(a => a.text !== text);
+        // Add to remove list if it was an original tag
+        const listing = DATA.find(l => l.id === id);
+        const originalTags = [
+          ...(listing?.tags_green  || []),
+          ...(listing?.tags_yellow || []),
+          ...(listing?.tags_red    || []),
+        ];
+        if (originalTags.includes(text) && !ov.remove.includes(text)) {
+          ov.remove.push(text);
+        }
+        setOverride(id, ov);
+        refreshCardTags(id);
+        return;
+      }
+
+      // "+" Add tag button
+      const addBtn = e.target.closest('.tag-add-btn');
+      if (addBtn) {
+        e.stopPropagation();
+        const id = addBtn.dataset.id;
+        const card = listEl.querySelector(`.card[data-id="${id}"]`);
+        const picker = card?.querySelector('.tag-picker');
+        if (picker) picker.classList.toggle('open');
+        return;
+      }
+
+      // Tag picker option
+      const opt = e.target.closest('.tag-picker-option');
+      if (opt) {
+        const id    = opt.dataset.id;
+        const text  = opt.dataset.tag;
+        const color = opt.dataset.color;
+        const ov    = getOverride(id);
+        // Remove from remove list if it was previously removed
+        ov.remove = ov.remove.filter(r => r !== text);
+        if (!ov.add.find(a => a.text === text)) {
+          ov.add.push({ text, color });
+        }
+        setOverride(id, ov);
+        refreshCardTags(id);
+        // Re-open picker so user can keep adding
+        const card   = listEl.querySelector(`.card[data-id="${id}"]`);
+        const picker = card?.querySelector('.tag-picker');
+        if (picker) picker.classList.add('open');
+        return;
+      }
+
+      // Custom tag button
+      const customBtn = e.target.closest('[data-custom="1"]');
+      if (customBtn) {
+        const id    = customBtn.dataset.id;
+        const text  = prompt('Enter custom tag text:');
+        if (!text?.trim()) return;
+        const colorChoice = prompt('Color? g = green (pro), y = yellow (note), r = red (con)', 'g');
+        const color = ['g','y','r'].includes(colorChoice) ? colorChoice : 'g';
+        const ov    = getOverride(id);
+        if (!ov.add.find(a => a.text === text.trim())) {
+          ov.add.push({ text: text.trim(), color });
+        }
+        setOverride(id, ov);
+        refreshCardTags(id);
+        return;
+      }
+
+      // Tapping outside a picker closes it
+      if (!e.target.closest('.tag-picker') && !e.target.closest('.tag-add-btn')) {
+        listEl.querySelectorAll('.tag-picker.open').forEach(p => p.classList.remove('open'));
+      }
+    });
+
+    // ── Corrections modal ─────────────────────────────────────────────────────
+    function buildExportJson() {
+      const all = allOverrides();
+      if (Object.keys(all).length === 0) return '{}';
+
+      // Build a listing_overrides.json-compatible fragment
+      const out = {};
+      for (const [id, ov] of Object.entries(all)) {
+        const listing = DATA.find(l => l.id === id);
+        const addr = listing ? `${listing.address}, ${listing.city}` : id;
+        const entry = { _note: `Manually edited in app — ${addr}` };
+
+        // Map known tag additions to their underlying data fields
+        for (const { text, color } of ov.add) {
+          const mapped = TAG_TO_FIELD[text];
+          if (mapped) Object.assign(entry, mapped);
+          else {
+            // Unknown/custom tags go into manual_flags
+            if (!entry.manual_flags) entry.manual_flags = {};
+            entry.manual_flags[text.toLowerCase().replace(/\W+/g,'_')] = true;
+          }
+        }
+        // Tag removals — record them so they aren't re-added by scoring
+        if (ov.remove.length > 0) {
+          entry.tags_force_remove = ov.remove;
+        }
+
+        out[id] = entry;
+      }
+      return JSON.stringify(out, null, 2);
+    }
+
+    // Map tag text → listing_overrides.json data field(s)
+    const TAG_TO_FIELD = {
+      'Central/mini-split AC': { ac_type: 'central' },
+      'Window AC':             { ac_type: 'window' },
+      'No AC':                 { ac_type: 'none' },
+      'In-unit laundry':       { laundry_type: 'inunit' },
+      'Laundry on-site':       { laundry_type: 'onsite' },
+      'No laundry':            { laundry_type: 'none' },
+      'Dishwasher':            { has_dishwasher: true },
+      'No dishwasher':         { has_dishwasher: false },
+      'Outdoor space':         { has_outdoor_space: true },
+      'Single-family':         { property_type_final: 'single_family' },
+      'Condo':                 { property_type_final: 'condo' },
+      'Townhouse':             { property_type_final: 'townhouse' },
+      'Pets allowed':          { pets_allowed: true },
+      'No pets':               { pets_allowed: false },
+    };
+
+    const modalOverlay = document.getElementById('modalOverlay');
+    const exportJsonEl = document.getElementById('exportJson');
+    const btnCopy      = document.getElementById('btnCopy');
+    const btnClear     = document.getElementById('btnClear');
+    const btnClose     = document.getElementById('btnClose');
+    const correctionsBtn = document.getElementById('correctionsBtn');
+
+    correctionsBtn.addEventListener('click', () => {
+      exportJsonEl.textContent = buildExportJson();
+      modalOverlay.classList.add('open');
+    });
+
+    btnCopy.addEventListener('click', () => {
+      navigator.clipboard.writeText(exportJsonEl.textContent)
+        .then(() => { btnCopy.textContent = '✓ Copied!'; setTimeout(() => btnCopy.textContent = 'Copy JSON', 2000); })
+        .catch(() => { exportJsonEl.select?.(); document.execCommand('copy'); });
+    });
+
+    btnClear.addEventListener('click', () => {
+      if (!confirm('Clear all local tag corrections? This cannot be undone.')) return;
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key.startsWith(OV_PREFIX)) localStorage.removeItem(key);
+      }
+      modalOverlay.classList.remove('open');
       render();
     });
+
+    btnClose.addEventListener('click', () => modalOverlay.classList.remove('open'));
+    modalOverlay.addEventListener('click', e => {
+      if (e.target === modalOverlay) modalOverlay.classList.remove('open');
+    });
+
+    // ── Wire toolbar ──────────────────────────────────────────────────────────
+    toggleBtn.addEventListener('click', () => { showExpired = !showExpired; render(); });
     sortEl.addEventListener('change', render);
     regionEl.addEventListener('change', render);
     sourceEl.addEventListener('change', render);
+
     render();
   </script>
 </body>

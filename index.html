@@ -330,6 +330,30 @@
       background: #eff6ff;
     }
 
+    /* Edit action row — shown when card is in editing mode */
+    .card-edit-actions {
+      display: none;
+      gap: 0.4rem;
+      margin-top: 0.6rem;
+      flex-wrap: wrap;
+    }
+    .card.editing .card-edit-actions { display: flex; }
+    .edit-action-btn {
+      font-family: inherit;
+      font-size: 0.72rem;
+      font-weight: 500;
+      padding: 0.22rem 0.6rem;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+      background: none;
+      cursor: pointer;
+      color: var(--text-secondary);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .edit-action-btn.danger { color: var(--red); border-color: #fca5a5; }
+    .edit-action-btn.warn   { color: var(--yellow); border-color: #fcd34d; }
+    .edit-action-btn:hover  { filter: brightness(0.95); }
+
     /* Inline tag picker (expands below tag row when + tapped) */
     .tag-picker {
       display: none;
@@ -534,6 +558,22 @@
       { text: 'Valley heat warning',   color: 'r' },
     ];
 
+    // ── localStorage helpers — hidden / off-market flags ─────────────────────
+    const HIDE_PREFIX   = 'rental_hide_';
+    const OFFMKT_PREFIX = 'rental_offmkt_';
+
+    function isHidden(id)    { return !!localStorage.getItem(HIDE_PREFIX + id); }
+    function isOffMarket(id) { return !!localStorage.getItem(OFFMKT_PREFIX + id); }
+
+    function setHidden(id, val) {
+      if (val) localStorage.setItem(HIDE_PREFIX + id, '1');
+      else     localStorage.removeItem(HIDE_PREFIX + id);
+    }
+    function setOffMarket(id, val) {
+      if (val) localStorage.setItem(OFFMKT_PREFIX + id, '1');
+      else     localStorage.removeItem(OFFMKT_PREFIX + id);
+    }
+
     // ── localStorage override helpers ─────────────────────────────────────────
     const OV_PREFIX = 'rental_ov_';
 
@@ -678,7 +718,11 @@
       const source = sourceEl.value;
       let items    = [...DATA];
 
-      if (!showExpired) items = items.filter(l => (l.status || 'active') !== 'expired');
+      // Filter hidden and off-market (unless showing expired)
+      items = items.filter(l => !isHidden(l.id));
+      if (!showExpired) items = items.filter(l =>
+        (l.status || 'active') !== 'expired' && !isOffMarket(l.id)
+      );
       if (region) items = items.filter(l => (l.region || '') === region);
       if (source) items = items.filter(l => (l.source || '').includes(source === 'apartments.com' ? 'apartment' : source));
 
@@ -691,7 +735,7 @@
       regionEl.innerHTML = '<option value="">All Regions</option>' +
         regions.map(r => `<option value="${r}"${r === region ? ' selected' : ''}>${r}</option>`).join('');
 
-      const expiredCount = DATA.filter(l => l.status === 'expired').length;
+      const expiredCount = DATA.filter(l => !isHidden(l.id) && (l.status === 'expired' || isOffMarket(l.id))).length;
       const lastChecked  = DATA.map(l => l.last_checked).filter(Boolean).sort().pop();
       const checkedStr   = lastChecked ? ` · checked ${new Date(lastChecked).toLocaleDateString()}` : '';
       countEl.textContent = `${items.length} listing${items.length !== 1 ? 's' : ''}${checkedStr}`;
@@ -735,15 +779,17 @@
           ? `<span class="rank-badge">${rank}</span>` : '';
         const siteName = srcCls === 'zillow' ? 'Zillow' : 'Apartments.com';
 
+        const localOffMkt = isOffMarket(l.id);
+        const cardExpired = isExpired || localOffMkt;
         const { tagHtml, pickerHtml, editDot } = buildTagsSection(l);
-        const expiredBadge = isExpired
-          ? `<div class="expired-badge">&#10006; No longer available</div>` : '';
+        const expiredBadge = cardExpired
+          ? `<div class="expired-badge">&#10006; ${localOffMkt && !isExpired ? 'Marked off-market by you' : 'No longer available'}</div>` : '';
 
-        return `<div class="card${isExpired ? ' expired' : ''}" data-id="${l.id}">
+        return `<div class="card${cardExpired ? ' expired' : ''}" data-id="${l.id}">
           <div class="card-body">
             <div class="card-top">
               <div class="score-ring ${cls}" style="position:relative">
-                ${isExpired ? '—' : Math.round(sc)}${rankBadge}${editDot}
+                ${cardExpired ? '—' : Math.round(sc)}${rankBadge}${editDot}
               </div>
               <div class="card-info">
                 <div class="card-addr">${esc(addr)}</div>
@@ -761,6 +807,12 @@
               <button class="tag-add-btn" data-id="${l.id}">+ add tag</button>
             </div>
             <div class="tag-picker" data-id="${l.id}">${pickerHtml}</div>
+            <div class="card-edit-actions">
+              ${localOffMkt
+                ? `<button class="edit-action-btn" data-action="unmark-offmkt" data-id="${l.id}">↩ Restore listing</button>`
+                : `<button class="edit-action-btn warn" data-action="mark-offmkt" data-id="${l.id}">⊘ Mark off-market</button>`}
+              <button class="edit-action-btn danger" data-action="hide" data-id="${l.id}">✕ Hide from list</button>
+            </div>
             <button class="card-edit-btn" data-id="${l.id}">✏ Edit</button>
           </div>
           ${buildPhotoStrip(l.photo_urls)}
@@ -886,6 +938,26 @@
         }
         setOverride(id, ov);
         refreshCardTags(id);
+        return;
+      }
+
+      // Edit action buttons (mark off-market / hide / restore)
+      const actionBtn = e.target.closest('[data-action]');
+      if (actionBtn) {
+        const id     = actionBtn.dataset.id;
+        const action = actionBtn.dataset.action;
+        if (action === 'mark-offmkt') {
+          setOffMarket(id, true);
+          render();
+        } else if (action === 'unmark-offmkt') {
+          setOffMarket(id, false);
+          render();
+        } else if (action === 'hide') {
+          if (confirm('Hide this listing permanently from your list? You can only restore it by clearing all corrections.')) {
+            setHidden(id, true);
+            render();
+          }
+        }
         return;
       }
 

@@ -632,6 +632,12 @@
         <button class="btn-clear" id="btnClear">Clear all</button>
         <button class="btn-close" id="btnClose">Done</button>
       </div>
+      <h3 style="margin-top:1.25rem">🏠 Toured (sync for everyone)</h3>
+      <p>Copy this into <code>toured_listings.json</code> in the rental_hunt app folder (replace the whole file). Then run <code>score_listings.py</code> + deploy. After that, toured flags load for everyone on every visit. Bookmark stubs are not in this file until they&rsquo;re scraped and have real ids—tap toured again after scrape if needed.</p>
+      <pre id="exportTouredJson"></pre>
+      <div class="modal-btns">
+        <button class="btn-copy" type="button" id="btnCopyToured">Copy toured JSON</button>
+      </div>
     </div>
   </div>
 
@@ -699,9 +705,10 @@
       { text: 'Valley heat warning',   color: 'r' },
     ];
 
-    // ── Pending links (stubs) + toured — all device-local ───────────────────
+    // ── Pending links (stubs) + toured (local + optional server via toured_listings.json)
     const PENDING_KEY = 'rental_pending_links_v1';
-    const TOURED_KEY  = 'rental_toured_v1';
+    const TOURED_KEY    = 'rental_toured_v1';
+    const SUPPRESS_KEY = 'rental_toured_suppress_v1';
 
     function normalizeListingUrl(url) {
       try {
@@ -803,14 +810,39 @@
     function getTouredMap() {
       try { return JSON.parse(localStorage.getItem(TOURED_KEY) || '{}') || {}; } catch { return {}; }
     }
+    function getTouredSuppress() {
+      try { return JSON.parse(localStorage.getItem(SUPPRESS_KEY) || '{}') || {}; } catch { return {}; }
+    }
+    function setTouredSuppress(id, on) {
+      const m = getTouredSuppress();
+      if (on) m[id] = true;
+      else delete m[id];
+      localStorage.setItem(SUPPRESS_KEY, JSON.stringify(m));
+    }
     function setToured(id, on) {
       const m = getTouredMap();
       if (on) m[id] = new Date().toISOString().slice(0, 10);
       else delete m[id];
       localStorage.setItem(TOURED_KEY, JSON.stringify(m));
     }
-    function isToured(id) { return !!getTouredMap()[id]; }
-    function touredDate(id) { return getTouredMap()[id] || ''; }
+
+    function findListingById(id) {
+      return DATA.find(l => l.id === id) || stubsAsListings().find(l => l.id === id) || null;
+    }
+
+    /** Server (deployed) or device-local “not yet exported” toured state */
+    function isTouredListing(l) {
+      if (!l || !l.id) return false;
+      if (getTouredSuppress()[l.id]) return false;
+      if (l.toured === true || l.toured_date) return true;
+      return !!getTouredMap()[l.id];
+    }
+
+    function touredDateDisplay(l) {
+      if (!l) return '';
+      if (l.toured_date) return l.toured_date;
+      return getTouredMap()[l.id] || '';
+    }
 
     function updatePendingToolbar() {
       const n = loadPendingRaw().length;
@@ -1054,7 +1086,7 @@
           const srcCls   = (l.source || '').includes('apartment') ? 'apartments' : 'zillow';
           const srcLabel = srcCls === 'zillow' ? 'Z' : 'A';
           const siteName = srcCls === 'zillow' ? 'Zillow' : 'Apartments.com';
-          const toured   = isToured(l.id);
+          const toured   = isTouredListing(l);
           return `<div class="card stub" data-id="${l.id}" data-stub="1">
           <div class="card-body">
             <div class="card-top">
@@ -1068,7 +1100,7 @@
                   <span style="font-size:0.78rem;color:var(--text-muted)">Bookmark</span>
                 </div>
                 <div class="stub-url">${esc(l.source_url)}</div>
-                ${toured ? `<div class="toured-pill">🏠 Toured${touredDate(l.id) ? ' · ' + esc(touredDate(l.id)) : ''}</div>` : ''}
+                ${toured ? `<div class="toured-pill">🏠 Toured${touredDateDisplay(l) ? ' · ' + esc(touredDateDisplay(l)) : ''}</div>` : ''}
               </div>
             </div>
           </div>
@@ -1105,9 +1137,9 @@
         const expiredBadge = cardExpired
           ? `<div class="expired-badge">&#10006; ${localOffMkt && !isExpired ? 'Marked off-market by you' : 'No longer available'}</div>` : '';
 
-        const toured = isToured(l.id);
+        const toured = isTouredListing(l);
         const touredHtml = toured
-          ? `<div class="toured-pill">🏠 Toured · ${esc(touredDate(l.id))}</div>` : '';
+          ? `<div class="toured-pill">🏠 Toured · ${esc(touredDateDisplay(l))}</div>` : '';
 
         return `<div class="card${cardExpired ? ' expired' : ''}" data-id="${l.id}">
           <div class="card-body">
@@ -1275,7 +1307,15 @@
         const id     = actionBtn.dataset.id;
         const action = actionBtn.dataset.action;
         if (action === 'toggle-toured') {
-          setToured(id, !isToured(id));
+          const listing = findListingById(id);
+          if (!listing) return;
+          if (isTouredListing(listing)) {
+            if (listing.toured_date || listing.toured) setTouredSuppress(id, true);
+            setToured(id, false);
+          } else {
+            setTouredSuppress(id, false);
+            setToured(id, true);
+          }
           render();
           return;
         }
@@ -1364,9 +1404,33 @@
     const btnClose     = document.getElementById('btnClose');
     const correctionsBtn = document.getElementById('correctionsBtn');
 
+    function buildTouredExportObject() {
+      const o = {};
+      const today = new Date().toISOString().slice(0, 10);
+      for (const l of DATA) {
+        if (isTouredListing(l))
+          o[l.id] = touredDateDisplay(l) || today;
+      }
+      return o;
+    }
+
     correctionsBtn.addEventListener('click', () => {
       exportJsonEl.textContent = buildExportJson();
+      document.getElementById('exportTouredJson').textContent =
+        JSON.stringify(buildTouredExportObject(), null, 2);
       modalOverlay.classList.add('open');
+    });
+
+    document.getElementById('btnCopyToured').addEventListener('click', () => {
+      const el = document.getElementById('exportTouredJson');
+      const t = el.textContent;
+      navigator.clipboard.writeText(t)
+        .then(() => {
+          const b = document.getElementById('btnCopyToured');
+          b.textContent = '✓ Copied!';
+          setTimeout(() => { b.textContent = 'Copy toured JSON'; }, 2000);
+        })
+        .catch(() => {});
     });
 
     btnCopy.addEventListener('click', () => {

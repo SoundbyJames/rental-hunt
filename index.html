@@ -121,9 +121,43 @@
       color: var(--accent);
       background: #eff6ff;
       border: 1px solid #bfdbfe;
-      display: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
     }
-    .corrections-btn.has-changes { display: inline-flex; align-items: center; gap: 0.3rem; }
+    .corrections-btn.has-changes {
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    .add-link-btn {
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: white;
+      background: #111827;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 0.4rem 0.75rem;
+      cursor: pointer;
+      white-space: nowrap;
+      min-height: 36px;
+    }
+    .export-pending-btn {
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #713f12;
+      background: #fef9c3;
+      border: 1px solid #fde047;
+      border-radius: var(--radius-sm);
+      padding: 0.4rem 0.65rem;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      gap: 0.25rem;
+      min-height: 36px;
+    }
+    .export-pending-btn.visible { display: inline-flex; }
 
     /* Card list */
     .list { padding: 0.75rem 1rem calc(var(--safe-bottom) + 1rem); }
@@ -472,6 +506,81 @@
     .btn-close { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
     .btn-clear { background: #fee2e2; color: #7f1d1d; border: 1px solid #fca5a5; }
 
+    /* Stub card — link-only, not scraped yet */
+    .card.stub {
+      border: 2px dashed var(--border);
+      background: #fafbfc;
+    }
+    .card.stub .score-ring {
+      background: var(--text-muted) !important;
+      font-size: 1.4rem;
+      font-weight: 400;
+    }
+    .stub-hint {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 0.35rem;
+      line-height: 1.35;
+    }
+    .stub-url {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      word-break: break-all;
+      margin-top: 0.25rem;
+    }
+
+    /* Toured badge */
+    .toured-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #14532d;
+      background: #dcfce7;
+      border-radius: 100px;
+      padding: 0.15rem 0.55rem;
+      margin-top: 0.35rem;
+    }
+    .card-action-row {
+      display: flex;
+      flex-wrap: wrap;
+      border-top: 1px solid var(--border);
+    }
+    .card-action-row a,
+    .card-action-row button.card-link-btn {
+      flex: 1;
+      min-width: 120px;
+      text-align: center;
+      padding: 0.65rem 0.5rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border: none;
+      background: none;
+      font-family: inherit;
+      cursor: pointer;
+      color: var(--accent);
+      text-decoration: none;
+      border-right: 1px solid var(--border);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .card-action-row a:last-child,
+    .card-action-row button.card-link-btn:last-child { border-right: none; }
+    .card-action-row .card-link-btn.secondary { color: var(--text-secondary); font-weight: 500; }
+    .card-action-row .card-link-btn.danger { color: var(--red); }
+
+    .modal-sheet input[type="url"],
+    .modal-sheet input[type="text"] {
+      width: 100%;
+      font-family: inherit;
+      font-size: 0.95rem;
+      padding: 0.65rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-top: 0.25rem;
+    }
+    .modal-sheet label { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); }
+
     /* Desktop */
     @media (min-width: 640px) {
       .list { max-width: 640px; margin: 0 auto; padding: 1rem 1.5rem 2rem; }
@@ -503,6 +612,8 @@
       <option value="zillow">Zillow</option>
       <option value="apartments.com">Apartments.com</option>
     </select>
+    <button class="add-link-btn" type="button" id="addLinkBtn">+ Add link</button>
+    <button class="export-pending-btn" type="button" id="exportPendingBtn">📋 Pending URLs</button>
     <button class="toggle-expired" id="toggleExpired">Show expired</button>
     <button class="corrections-btn" id="correctionsBtn">✏ Corrections</button>
     <span class="count" id="count"></span>
@@ -520,6 +631,36 @@
         <button class="btn-copy" id="btnCopy">Copy JSON</button>
         <button class="btn-clear" id="btnClear">Clear all</button>
         <button class="btn-close" id="btnClose">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add bookmarked link (stub until scrape) -->
+  <div class="modal-overlay" id="addLinkModal">
+    <div class="modal-sheet">
+      <h3>+ Save a listing link</h3>
+      <p>Add a Zillow or Apartments.com URL. It appears right away as a stub (no photos/score). When you&rsquo;re ready, use <strong>Pending URLs</strong> to copy all stubs and run <code>add_listing.py</code> in Cursor.</p>
+      <label for="addLinkUrl">Listing URL</label>
+      <input type="url" id="addLinkUrl" placeholder="https://www.zillow.com/homedetails/..." autocomplete="off">
+      <label for="addLinkLabel">Short label (optional)</label>
+      <input type="text" id="addLinkLabel" placeholder="e.g. Encino near Ventura" autocomplete="off">
+      <div class="modal-btns">
+        <button class="btn-copy" type="button" id="addLinkSave">Save link</button>
+        <button class="btn-close" type="button" id="addLinkCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export pending URLs for scrape -->
+  <div class="modal-overlay" id="pendingExportModal">
+    <div class="modal-sheet">
+      <h3>Pending links (not scraped yet)</h3>
+      <p>One URL per line. Paste into Cursor for <code>python add_listing.py url1 url2 ...</code> or into your links text files. After scraping successfully, tap <strong>Clear pending list</strong> here so you don&rsquo;t duplicate.</p>
+      <pre id="pendingExportPre"></pre>
+      <div class="modal-btns">
+        <button class="btn-copy" type="button" id="pendingCopyUrls">Copy URLs</button>
+        <button class="btn-clear" type="button" id="pendingClearAll">Clear pending list</button>
+        <button class="btn-close" type="button" id="pendingClose">Done</button>
       </div>
     </div>
   </div>
@@ -557,6 +698,132 @@
       { text: 'Visit: negative',       color: 'r' },
       { text: 'Valley heat warning',   color: 'r' },
     ];
+
+    // ── Pending links (stubs) + toured — all device-local ───────────────────
+    const PENDING_KEY = 'rental_pending_links_v1';
+    const TOURED_KEY  = 'rental_toured_v1';
+
+    function normalizeListingUrl(url) {
+      try {
+        const u = new URL(String(url).trim());
+        u.hash = '';
+        u.pathname = (u.pathname.replace(/\/+$/, '') || '/');
+        return u.href.toLowerCase();
+      } catch {
+        return String(url).trim().toLowerCase();
+      }
+    }
+
+    function classifySiteFromUrl(url) {
+      const s = String(url).toLowerCase();
+      if (s.includes('zillow.com')) return 'zillow';
+      if (s.includes('apartments.com')) return 'apartments.com';
+      return 'unknown';
+    }
+
+    function urlHashId(url) {
+      const n = normalizeListingUrl(url);
+      let h = 5381;
+      for (let i = 0; i < n.length; i++) h = ((h << 5) + h) + n.charCodeAt(i);
+      return 'pending_' + (h >>> 0).toString(36);
+    }
+
+    function loadPendingRaw() {
+      try {
+        const raw = localStorage.getItem(PENDING_KEY);
+        const a = raw ? JSON.parse(raw) : [];
+        return Array.isArray(a) ? a : [];
+      } catch { return []; }
+    }
+
+    function savePendingRaw(arr) {
+      localStorage.setItem(PENDING_KEY, JSON.stringify(arr));
+      updatePendingToolbar();
+    }
+
+    function listingUrlSet() {
+      const set = new Set();
+      for (const l of DATA) {
+        if (l.source_url) set.add(normalizeListingUrl(l.source_url));
+      }
+      return set;
+    }
+
+    /** Stub rows merged into the list (deduped vs scraped DATA). */
+    function stubsAsListings() {
+      const known = listingUrlSet();
+      return loadPendingRaw()
+        .filter(p => p && p.source_url && !known.has(normalizeListingUrl(p.source_url)))
+        .map(p => ({
+          is_stub: true,
+          id: p.id || urlHashId(p.source_url),
+          source_url: p.source_url,
+          source: p.site === 'apartments.com' ? 'apartments.com' : 'zillow',
+          address: p.label || 'Saved link (scrape to load details)',
+          city: 'Pending',
+          region: 'Pending',
+          score_display: null,
+          status: 'active',
+          addedAt: p.addedAt,
+        }));
+    }
+
+    function addPendingLink(url, label) {
+      const site = classifySiteFromUrl(url);
+      if (site === 'unknown') {
+        alert('Please use a Zillow or Apartments.com listing URL.');
+        return false;
+      }
+      const norm = normalizeListingUrl(url);
+      const known = listingUrlSet();
+      if (known.has(norm)) {
+        alert('That URL is already in your scraped list.');
+        return false;
+      }
+      let list = loadPendingRaw();
+      if (list.some(p => normalizeListingUrl(p.source_url) === norm)) {
+        alert('That link is already in your pending list.');
+        return false;
+      }
+      list.push({
+        id: urlHashId(url),
+        source_url: url.trim(),
+        site,
+        label: (label || '').trim(),
+        addedAt: new Date().toISOString(),
+      });
+      savePendingRaw(list);
+      return true;
+    }
+
+    function removePendingById(id) {
+      savePendingRaw(loadPendingRaw().filter(p => p.id !== id));
+    }
+
+    function getTouredMap() {
+      try { return JSON.parse(localStorage.getItem(TOURED_KEY) || '{}') || {}; } catch { return {}; }
+    }
+    function setToured(id, on) {
+      const m = getTouredMap();
+      if (on) m[id] = new Date().toISOString().slice(0, 10);
+      else delete m[id];
+      localStorage.setItem(TOURED_KEY, JSON.stringify(m));
+    }
+    function isToured(id) { return !!getTouredMap()[id]; }
+    function touredDate(id) { return getTouredMap()[id] || ''; }
+
+    function updatePendingToolbar() {
+      const n = loadPendingRaw().length;
+      const btn = document.getElementById('exportPendingBtn');
+      if (!btn) return;
+      if (n > 0) {
+        btn.classList.add('visible');
+        btn.textContent = `📋 Pending (${n})`;
+      } else {
+        btn.classList.remove('visible');
+        btn.textContent = '📋 Pending URLs';
+      }
+    }
 
     // ── localStorage helpers — hidden / off-market flags ─────────────────────
     const HIDE_PREFIX   = 'rental_hide_';
@@ -675,6 +942,7 @@
         btn.textContent = `✏ Corrections (${count})`;
         btn.classList.add('has-changes');
       } else {
+        btn.textContent = '✏ Corrections';
         btn.classList.remove('has-changes');
       }
     }
@@ -716,29 +984,47 @@
       const sort   = sortEl.value;
       const region = regionEl.value;
       const source = sourceEl.value;
-      let items    = [...DATA];
 
-      // Filter hidden and off-market (unless showing expired)
-      items = items.filter(l => !isHidden(l.id));
-      if (!showExpired) items = items.filter(l =>
+      let scraped = [...DATA];
+      scraped = scraped.filter(l => !isHidden(l.id));
+      if (!showExpired) scraped = scraped.filter(l =>
         (l.status || 'active') !== 'expired' && !isOffMarket(l.id)
       );
+
+      let stubs = stubsAsListings().filter(l => !isHidden(l.id));
+      if (!showExpired) stubs = stubs.filter(l => !isOffMarket(l.id));
+
+      let items = [...scraped, ...stubs];
+
       if (region) items = items.filter(l => (l.region || '') === region);
       if (source) items = items.filter(l => (l.source || '').includes(source === 'apartments.com' ? 'apartment' : source));
 
-      if (sort === 'score')       items.sort((a, b) => (b.score_display || 0) - (a.score_display || 0));
-      else if (sort === 'price_low')  items.sort((a, b) => (a.price || 99999) - (b.price || 99999));
-      else if (sort === 'price_high') items.sort((a, b) => (b.price || 0) - (a.price || 0));
-      else if (sort === 'sqft')   items.sort((a, b) => (b.sqft || 0) - (a.sqft || 0));
+      const stubFirst = (a, b) => {
+        if (a.is_stub && !b.is_stub) return 1;
+        if (!a.is_stub && b.is_stub) return -1;
+        return 0;
+      };
+      if (sort === 'score') {
+        items.sort((a, b) => stubFirst(a, b) || ((b.score_display || 0) - (a.score_display || 0)));
+      } else if (sort === 'price_low') {
+        items.sort((a, b) => stubFirst(a, b) || ((a.price ?? 99999) - (b.price ?? 99999)));
+      } else if (sort === 'price_high') {
+        items.sort((a, b) => stubFirst(a, b) || ((b.price ?? 0) - (a.price ?? 0)));
+      } else if (sort === 'sqft') {
+        items.sort((a, b) => stubFirst(a, b) || ((b.sqft ?? 0) - (a.sqft ?? 0)));
+      }
 
-      const regions = [...new Set(DATA.map(l => l.region).filter(Boolean))].sort();
+      const regSet = new Set([...DATA.map(l => l.region).filter(Boolean), ...(loadPendingRaw().length > 0 ? ['Pending'] : [])]);
+      const regions = [...regSet].sort();
       regionEl.innerHTML = '<option value="">All Regions</option>' +
         regions.map(r => `<option value="${r}"${r === region ? ' selected' : ''}>${r}</option>`).join('');
 
       const expiredCount = DATA.filter(l => !isHidden(l.id) && (l.status === 'expired' || isOffMarket(l.id))).length;
+      const pendingN     = stubsAsListings().length;
       const lastChecked  = DATA.map(l => l.last_checked).filter(Boolean).sort().pop();
       const checkedStr   = lastChecked ? ` · checked ${new Date(lastChecked).toLocaleDateString()}` : '';
-      countEl.textContent = `${items.length} listing${items.length !== 1 ? 's' : ''}${checkedStr}`;
+      const pendStr      = pendingN ? ` · ${pendingN} pending link${pendingN !== 1 ? 's' : ''}` : '';
+      countEl.textContent = `${items.length} shown${pendStr}${checkedStr}`;
 
       if (expiredCount > 0) {
         toggleBtn.style.display = '';
@@ -749,19 +1035,53 @@
       }
 
       updateCorrectionsBtn();
+      updatePendingToolbar();
 
       if (items.length === 0) {
+        const hint = DATA.length === 0 && loadPendingRaw().length === 0
+          ? 'Run the scrapers, combine and score, or tap <strong>+ Add link</strong> to save URLs before scraping.'
+          : 'Nothing matches your filters. Try All Regions / All Sources.';
         listEl.innerHTML = `<div class="empty">
           <h2>No listings</h2>
-          <p>Run the scrapers, then combine and score.<br>Check the README for steps.</p>
+          <p>${hint}</p>
         </div>`;
         return;
       }
 
       let rank = 0;
       listEl.innerHTML = items.map(l => {
+        if (l.is_stub) {
+          const srcCls   = (l.source || '').includes('apartment') ? 'apartments' : 'zillow';
+          const srcLabel = srcCls === 'zillow' ? 'Z' : 'A';
+          const siteName = srcCls === 'zillow' ? 'Zillow' : 'Apartments.com';
+          const toured   = isToured(l.id);
+          return `<div class="card stub" data-id="${l.id}" data-stub="1">
+          <div class="card-body">
+            <div class="card-top">
+              <div class="score-ring ok" style="position:relative">\u002B</div>
+              <div class="card-info">
+                <div class="card-addr">${esc(l.address)}</div>
+                <div class="stub-hint">Not scraped yet — details and score appear after you run <code>add_listing.py</code> in Cursor.</div>
+                <div class="card-details" style="margin-top:0.35rem">
+                  <span class="source-badge ${srcCls}">${srcLabel}</span>
+                  <span class="sep">&middot;</span>
+                  <span style="font-size:0.78rem;color:var(--text-muted)">Bookmark</span>
+                </div>
+                <div class="stub-url">${esc(l.source_url)}</div>
+                ${toured ? `<div class="toured-pill">🏠 Toured${touredDate(l.id) ? ' · ' + esc(touredDate(l.id)) : ''}</div>` : ''}
+              </div>
+            </div>
+          </div>
+          <div class="card-action-row">
+            <a href="${esc(l.source_url)}" target="_blank" rel="noopener">Open ${siteName}</a>
+            <button type="button" class="card-link-btn secondary" data-action="toggle-toured" data-id="${l.id}">${toured ? '✓ Toured' : 'Mark toured'}</button>
+            <button type="button" class="card-link-btn danger" data-action="remove-pending" data-id="${l.id}">Remove</button>
+          </div>
+        </div>`;
+        }
+
         const isExpired = l.status === 'expired';
-        if (!isExpired) rank++;
+        if (!isExpired && !l.is_stub) rank++;
 
         const price   = fmtPrice(l);
         const details = [
@@ -775,7 +1095,7 @@
         const cls      = scoreClass(sc);
         const srcCls   = (l.source || '').includes('apartment') ? 'apartments' : 'zillow';
         const srcLabel = srcCls === 'zillow' ? 'Z' : 'A';
-        const rankBadge = (!isExpired && rank <= 3)
+        const rankBadge = (!isExpired && rank <= 3 && !l.is_stub)
           ? `<span class="rank-badge">${rank}</span>` : '';
         const siteName = srcCls === 'zillow' ? 'Zillow' : 'Apartments.com';
 
@@ -785,6 +1105,10 @@
         const expiredBadge = cardExpired
           ? `<div class="expired-badge">&#10006; ${localOffMkt && !isExpired ? 'Marked off-market by you' : 'No longer available'}</div>` : '';
 
+        const toured = isToured(l.id);
+        const touredHtml = toured
+          ? `<div class="toured-pill">🏠 Toured · ${esc(touredDate(l.id))}</div>` : '';
+
         return `<div class="card${cardExpired ? ' expired' : ''}" data-id="${l.id}">
           <div class="card-body">
             <div class="card-top">
@@ -793,6 +1117,7 @@
               </div>
               <div class="card-info">
                 <div class="card-addr">${esc(addr)}</div>
+                ${touredHtml}
                 <div class="card-details">
                   <span class="card-price">${price}</span>
                   ${details.length ? '<span class="sep">&middot;</span>' + details.join('<span class="sep">&middot;</span>') : ''}
@@ -816,8 +1141,11 @@
             <button class="card-edit-btn" data-id="${l.id}">✏ Edit</button>
           </div>
           ${buildPhotoStrip(l.photo_urls)}
-          <div class="card-action">
-            <a href="${l.source_url}" target="_blank" rel="noopener">View on ${siteName}</a>
+          <div class="card-action-row">
+            <a href="${esc(l.source_url)}" target="_blank" rel="noopener">View on ${siteName}</a>
+            <button type="button" class="card-link-btn secondary" data-action="toggle-toured" data-id="${l.id}">
+              ${toured ? '✓ Toured' : 'Mark toured'}
+            </button>
           </div>
         </div>`;
       }).join('');
@@ -941,11 +1269,23 @@
         return;
       }
 
-      // Edit action buttons (mark off-market / hide / restore)
+      // Edit action buttons (mark off-market / hide / restore / toured / pending)
       const actionBtn = e.target.closest('[data-action]');
       if (actionBtn) {
         const id     = actionBtn.dataset.id;
         const action = actionBtn.dataset.action;
+        if (action === 'toggle-toured') {
+          setToured(id, !isToured(id));
+          render();
+          return;
+        }
+        if (action === 'remove-pending') {
+          if (confirm('Remove this saved link from the pending list?')) {
+            removePendingById(id);
+            render();
+          }
+          return;
+        }
         if (action === 'mark-offmkt') {
           setOffMarket(id, true);
           render();
@@ -1050,12 +1390,65 @@
       if (e.target === modalOverlay) modalOverlay.classList.remove('open');
     });
 
+    // Add link + pending export modals
+    const addLinkModal   = document.getElementById('addLinkModal');
+    const addLinkBtn     = document.getElementById('addLinkBtn');
+    const addLinkUrl     = document.getElementById('addLinkUrl');
+    const addLinkLabel   = document.getElementById('addLinkLabel');
+    const addLinkSave    = document.getElementById('addLinkSave');
+    const addLinkCancel  = document.getElementById('addLinkCancel');
+    const pendingModal   = document.getElementById('pendingExportModal');
+    const exportPendingBtn = document.getElementById('exportPendingBtn');
+    const pendingExportPre = document.getElementById('pendingExportPre');
+    const pendingCopyUrls  = document.getElementById('pendingCopyUrls');
+    const pendingClearAll  = document.getElementById('pendingClearAll');
+    const pendingClose     = document.getElementById('pendingClose');
+
+    addLinkBtn.addEventListener('click', () => {
+      addLinkUrl.value = '';
+      addLinkLabel.value = '';
+      addLinkModal.classList.add('open');
+      setTimeout(() => addLinkUrl.focus(), 100);
+    });
+    addLinkCancel.addEventListener('click', () => addLinkModal.classList.remove('open'));
+    addLinkModal.addEventListener('click', e => { if (e.target === addLinkModal) addLinkModal.classList.remove('open'); });
+    addLinkSave.addEventListener('click', () => {
+      const url = (addLinkUrl.value || '').trim();
+      if (!url) { alert('Paste a listing URL.'); return; }
+      if (addPendingLink(url, addLinkLabel.value || '')) {
+        addLinkModal.classList.remove('open');
+        render();
+      }
+    });
+
+    exportPendingBtn.addEventListener('click', () => {
+      const lines = loadPendingRaw().map(p => p.source_url).join('\n');
+      pendingExportPre.textContent = lines || '(no pending links)';
+      pendingModal.classList.add('open');
+    });
+    pendingClose.addEventListener('click', () => pendingModal.classList.remove('open'));
+    pendingModal.addEventListener('click', e => { if (e.target === pendingModal) pendingModal.classList.remove('open'); });
+    pendingCopyUrls.addEventListener('click', () => {
+      const t = loadPendingRaw().map(p => p.source_url).join('\n');
+      navigator.clipboard.writeText(t)
+        .then(() => { pendingCopyUrls.textContent = '✓ Copied!'; setTimeout(() => pendingCopyUrls.textContent = 'Copy URLs', 2000); })
+        .catch(() => {});
+    });
+    pendingClearAll.addEventListener('click', () => {
+      if (!loadPendingRaw().length) return;
+      if (!confirm('Remove every pending link from this phone/browser?')) return;
+      localStorage.removeItem(PENDING_KEY);
+      pendingModal.classList.remove('open');
+      render();
+    });
+
     // ── Wire toolbar ──────────────────────────────────────────────────────────
     toggleBtn.addEventListener('click', () => { showExpired = !showExpired; render(); });
     sortEl.addEventListener('change', render);
     regionEl.addEventListener('change', render);
     sourceEl.addEventListener('change', render);
 
+    updatePendingToolbar();
     render();
   </script>
 </body>
